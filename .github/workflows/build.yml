@@ -35,7 +35,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: python -m pip install --upgrade pip qrcode pillow
+        run: python -m pip install --upgrade pip qrcode
 
       - name: Build device/www/index.html
         run: python tools/build.py

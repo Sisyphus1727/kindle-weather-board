@@ -76,7 +76,7 @@
 vi device/config.sh
 
 # 2. 构建页面（把农历库内联 + 生成二维码）
-python -m pip install qrcode pillow
+python -m pip install qrcode
 python tools/build.py
 
 # 3. 拷到 Kindle（仅这 4 个文件）

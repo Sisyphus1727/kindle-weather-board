@@ -76,7 +76,7 @@ Short version:
 vi device/config.sh
 
 # 2. build the page (inlines the lunar library, renders the QR code)
-python -m pip install qrcode pillow
+python -m pip install qrcode
 python tools/build.py
 
 # 3. copy 4 files to the Kindle

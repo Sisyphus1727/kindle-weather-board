@@ -23,7 +23,7 @@ import base64
 try:
     import qrcode
 except ImportError:
-    sys.exit("需要 qrcode 库： python -m pip install qrcode pillow")
+    sys.exit("需要 qrcode 库： python -m pip install qrcode")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG = os.path.join(ROOT, "device", "config.sh")
@@ -46,6 +46,48 @@ def read_config(path):
     return cfg
 
 
+def png_1bit(matrix, scale=4):
+    """
+    把二维码模块矩阵编码成 1-bit 灰度 PNG（自己写，不用 Pillow）
+
+    为什么不用 Pillow 存图：不同 Pillow 版本的 PNG 编码器/压缩参数不一样，
+    同一份输入在本地和 CI 上会得到不同字节 —— 那样 CI 每次构建都会产生
+    "有变化"的假象并自动提交。这里用 zlib 的 stored 模式（level 0）自己拼，
+    输出逐字节确定，任何机器上结果都一样。
+
+    scale：每个模块放大成几像素。4 表示 37 模块 -> 148px，
+    这样浏览器/墨水屏放大显示时模块边缘不会糊（纯整数缩放）。
+    """
+    import struct
+    import zlib
+
+    n = len(matrix)
+    w = n * scale
+    rows = []
+    for row in matrix:
+        # 每个模块横向复制 scale 次
+        bits = []
+        for dark in row:
+            bits.extend([dark] * scale)
+        byte_row = bytearray((w + 7) // 8)
+        for x, dark in enumerate(bits):
+            if not dark:
+                # 1 位灰度：sample=1 是白，sample=0 是黑 -> 亮模块置 1
+                byte_row[x >> 3] |= 0x80 >> (x & 7)
+        packed = bytes(byte_row)
+        for _ in range(scale):                        # 纵向复制 scale 行
+            rows.append(b"\x00" + packed)             # filter type 0
+    raw = b"".join(rows)
+
+    def chunk(tag, data):
+        return (struct.pack(">I", len(data)) + tag + data
+                + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF))
+
+    ihdr = struct.pack(">IIBBBBB", w, w, 1, 0, 0, 0, 0)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr)
+            + chunk(b"IDAT", zlib.compress(raw, 0)) + chunk(b"IEND", b""))
+
+
 def main():
     cfg = read_config(CONFIG)
     topic = cfg.get("TOPIC", "").strip()
@@ -61,10 +103,8 @@ def main():
     qr = qrcode.QRCode(border=2, box_size=3, error_correction=qrcode.constants.ERROR_CORRECT_M)
     qr.add_data(url)
     qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white").convert("1")
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    uri = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    png = png_1bit(qr.get_matrix())
+    uri = "data:image/png;base64," + base64.b64encode(png).decode()
 
     html = html.replace("__LUNAR__", lunar)
     html = html.replace("__QR__", uri)
@@ -72,7 +112,7 @@ def main():
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     io.open(OUT, "w", encoding="utf-8", newline="\n").write(html)
-    print("qr modules %d, png %d B" % (qr.modules_count, len(buf.getvalue())))
+    print("qr modules %d, png %d B" % (qr.modules_count, len(png)))
     print("written %s  (%d bytes)" % (OUT, len(html.encode("utf-8"))))
 
 
