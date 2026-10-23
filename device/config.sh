@@ -22,7 +22,7 @@ PLACE_SUB="中国 · 某某省某某市"
 # ---- 2. 推送主题 ----
 # 手机扫码后打开的编辑页地址就是 https://ntfy.sh/<TOPIC>
 # 建议用一串 20 位以上的随机字符，别人猜不到就不会往你的屏幕上推东西
-TOPIC="CHANGE-ME-use-a-long-random-topic"
+TOPIC="CI-SMOKE-TEST-tmp-0001"
 
 # ---- 3. 节奏（秒）----
 REFRESH_WEATHER=300      # 天气多久抓一次
