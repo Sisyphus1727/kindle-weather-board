@@ -1,0 +1,4 @@
+#!/bin/sh
+# 开机拉起看板（rcS.d 阶段 framework 还没起来，frame.sh 自己会等）
+[ -x /mnt/us/frame/frame.sh ] || exit 0
+nohup /mnt/us/frame/frame.sh >/dev/null 2>&1 &
